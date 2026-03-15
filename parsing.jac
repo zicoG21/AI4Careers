@@ -1,16 +1,13 @@
-# utils/parsing.jac
-# Convert uploaded calendar into structured data
-def parse_resume_text(
-    raw_text: str
-) -> map {
+# parsing.jac
+def parse_resume_text(raw_text: str) -> dict {
     skills: list[str] = [];
     bullets: list[str] = [];
 
     for line in raw_text.split("\n") {
-        if "Python" in line {
+        if "Python" in line and "Python" not in skills {
             skills.append("Python");
         }
-        if "SQL" in line {
+        if "SQL" in line and "SQL" not in skills {
             skills.append("SQL");
         }
         if line.strip().startswith("-") {
@@ -19,7 +16,7 @@ def parse_resume_text(
     }
 
     return {
-        "skills": uniq(skills),
+        "skills": skills,
         "experience_bullets": bullets,
         "projects": [],
         "education": {}

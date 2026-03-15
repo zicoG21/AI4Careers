@@ -8,7 +8,7 @@ walker:pub ResumeUpload {
     has filename: str;
     has raw_text: str;
 
-    can upload_resume with `root entry {
+    can upload_resume with Root entry {
         uid = token_to_user_id(self.token);
         if uid == "" {
             report {"error": "unauthorized"};
@@ -22,6 +22,7 @@ walker:pub ResumeUpload {
         resume_id = create_resume(
             uid,
             self.filename,
+            self.raw_text,
             extracted["skills"],
             extracted["experience_bullets"],
             extracted["projects"],
@@ -31,9 +32,7 @@ walker:pub ResumeUpload {
         report {
             "resume_id": resume_id,
             "status": "parsed",
-            "extraction_summary": {
-                "skills_count": len(extracted["skills"])
-            }
+            "extraction_summary": {"skills_count": len(extracted["skills"])}
         };
     }
 }
@@ -42,7 +41,7 @@ walker:pub GetResume {
     has token: str;
     has resume_id: str;
 
-    can fetch with `root entry {
+    can fetch with Root entry {
         uid = token_to_user_id(self.token);
         if uid == "" {
             report {"error": "unauthorized"};

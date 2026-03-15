@@ -85,4 +85,20 @@ export const getCompany = async (event_id, company_id) => {
   return response.data;
 };
 
+export const uploadResume = async (token, filename, raw_text) => {
+  const response = await api.post('/walker/ResumeUpload', {
+    token,
+    filename,
+    raw_text,
+  });
+
+  const jacResponse = response.data;
+  if (jacResponse.ok && jacResponse.data.reports && jacResponse.data.reports.length > 0) {
+    return jacResponse.data.reports[0];
+  }
+
+  return { error: 'Resume upload failed' };
+};
+
+
 export default api;

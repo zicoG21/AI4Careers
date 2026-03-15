@@ -55,7 +55,7 @@ function Dashboard() {
           <div className="card">
             <h3>Quick Actions</h3>
             <div className="action-buttons">
-              <button className="btn-action">Upload Resume</button>
+              <button className="btn-action" onClick={() => navigate('/resume-upload')}> Upload Resume</button>
               <button className="btn-action">Browse Companies</button>
               <button className="btn-action">View Career Fairs</button>
               <button className="btn-action">Update Preferences</button>
@@ -74,7 +74,7 @@ function Dashboard() {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
 

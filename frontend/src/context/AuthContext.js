@@ -1,4 +1,10 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useEffect,
+  useCallback,
+} from 'react';
 import { login as apiLogin, signup as apiSignup, getMe } from '../services/api';
 
 const AuthContext = createContext(null);
@@ -8,16 +14,13 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Check if user is logged in on mount
-    if (token) {
-      fetchUser();
-    } else {
-      setLoading(false);
-    }
+  const logout = useCallback(() => {
+    localStorage.removeItem('token');
+    setToken(null);
+    setUser(null);
   }, []);
 
-  const fetchUser = async (tokenOverride) => {
+  const fetchUser = useCallback(async (tokenOverride) => {
     try {
       const tokenToUse = tokenOverride || token;
       const userData = await getMe(tokenToUse);
@@ -32,7 +35,15 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [logout, token]);
+
+  useEffect(() => {
+    if (token) {
+      fetchUser();
+    } else {
+      setLoading(false);
+    }
+  }, [fetchUser, token]);
 
   const login = async (email, password) => {
     try {
@@ -63,12 +74,6 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       return { success: false, error: error.message };
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
-    setUser(null);
   };
 
   return (

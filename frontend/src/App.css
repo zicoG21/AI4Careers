@@ -262,3 +262,53 @@ body {
   font-size: 20px;
   color: #667eea;
 }
+
+/* Resume Upload */
+.resume-upload-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 100%);
+  padding: 24px;
+}
+
+.resume-upload-card {
+  width: 100%;
+  max-width: 640px;
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+}
+
+.resume-upload-card h1 {
+  margin-bottom: 8px;
+  color: #1f2937;
+}
+
+.resume-upload-subtitle {
+  color: #6b7280;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.resume-upload-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.file-meta {
+  margin-top: 12px;
+  color: #374151;
+}
+
+.success-message {
+  background-color: #ecfdf5;
+  color: #047857;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border-left: 4px solid #10b981;
+}
