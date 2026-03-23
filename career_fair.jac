@@ -1,5 +1,6 @@
 # career_fair.jac
-import from db { get_all_events, get_companies, get_company, get_roles }
+import from db { get_all_events, get_companies, get_company, get_roles, save_company, unsave_company, list_saved_companies, save_pitch }
+import from security { token_to_user_id }
 
 walker:pub ListEvents {
     can list_events with Root entry {
@@ -54,5 +55,58 @@ walker:pub ListRoles {
     can list_roles with Root entry {
         roles = get_roles(self.event_id);
         report roles;
+    }
+}
+
+walker:pub SaveCompany {
+    has token: str;
+    has company_id: str;
+    has event_id: str;
+
+    can save with Root entry {
+        uid = token_to_user_id(self.token);
+        if uid == "" { report {"error": "unauthorized"}; return; }
+        save_company(uid, self.company_id, self.event_id);
+        report {"ok": True};
+    }
+}
+
+walker:pub UnsaveCompany {
+    has token: str;
+    has company_id: str;
+    has event_id: str;
+
+    can unsave with Root entry {
+        uid = token_to_user_id(self.token);
+        if uid == "" { report {"error": "unauthorized"}; return; }
+        unsave_company(uid, self.company_id, self.event_id);
+        report {"ok": True};
+    }
+}
+
+walker:pub ListSavedCompanies {
+    has token: str;
+    has event_id: str;
+
+    can list_saved with Root entry {
+        uid = token_to_user_id(self.token);
+        if uid == "" { report {"error": "unauthorized"}; return; }
+        saved = list_saved_companies(uid, self.event_id);
+        report saved;
+    }
+}
+
+walker:pub SavePitch {
+    has token: str;
+    has company_id: str;
+    has event_id: str;
+    has pitch: str;
+
+    can save_p with Root entry {
+        uid = token_to_user_id(self.token);
+        if uid == "" { report {"error": "unauthorized"}; return; }
+        save_company(uid, self.company_id, self.event_id);
+        save_pitch(uid, self.company_id, self.event_id, self.pitch);
+        report {"ok": True};
     }
 }

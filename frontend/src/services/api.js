@@ -157,6 +157,51 @@ export const chatWithAI = async (token, question, history, event_id = 'evt_umich
   return { error: 'AI chat failed' };
 };
 
+export const saveCompany = async (token, company_id, event_id) => {
+  const response = await api.post('/walker/SaveCompany', { token, company_id, event_id });
+  const jacResponse = response.data;
+  if (jacResponse.ok && jacResponse.data.reports && jacResponse.data.reports.length > 0) {
+    return jacResponse.data.reports[0];
+  }
+  return { error: 'Save failed' };
+};
+
+export const unsaveCompany = async (token, company_id, event_id) => {
+  const response = await api.post('/walker/UnsaveCompany', { token, company_id, event_id });
+  const jacResponse = response.data;
+  if (jacResponse.ok && jacResponse.data.reports && jacResponse.data.reports.length > 0) {
+    return jacResponse.data.reports[0];
+  }
+  return { error: 'Unsave failed' };
+};
+
+export const listSavedCompanies = async (token, event_id) => {
+  const response = await api.post('/walker/ListSavedCompanies', { token, event_id });
+  const jacResponse = response.data;
+  if (jacResponse.ok && jacResponse.data.reports && jacResponse.data.reports.length > 0) {
+    return jacResponse.data.reports[0];
+  }
+  return [];
+};
+
+export const generateElevatorPitch = async (token, company_id, event_id) => {
+  const response = await api.post('/walker/GenerateElevatorPitch', { token, company_id, event_id });
+  const jacResponse = response.data;
+  if (jacResponse.ok && jacResponse.data.reports && jacResponse.data.reports.length > 0) {
+    return jacResponse.data.reports[0];
+  }
+  return { error: 'Pitch generation failed' };
+};
+
+export const savePitch = async (token, company_id, event_id, pitch) => {
+  const response = await api.post('/walker/SavePitch', { token, company_id, event_id, pitch });
+  const jacResponse = response.data;
+  if (jacResponse.ok && jacResponse.data.reports && jacResponse.data.reports.length > 0) {
+    return jacResponse.data.reports[0];
+  }
+  return { error: 'Save pitch failed' };
+};
+
 
 
 export default api;

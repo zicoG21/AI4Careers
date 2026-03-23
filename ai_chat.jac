@@ -27,6 +27,10 @@ obj CareerFairAssistant {
             return "Resume exists, but raw text is empty.";
         }
 
+        if len(raw_text) > 3000 {
+            raw_text = raw_text[:3000] + "\n[truncated]";
+        }
+
         return raw_text;
     }
 
@@ -65,7 +69,7 @@ obj CareerFairAssistant {
                 "major_search": ""
             }
         );
-        return json.dumps(companies);
+        return json.dumps(companies[:30]);
     }
 
     def search_companies(query: str) -> str {
@@ -204,7 +208,8 @@ walker:pub ChatWithAI {
         }
 
         assistant = CareerFairAssistant(user_id=uid, event_id=self.event_id);
-        history_text = history_to_text(self.history);
+        recent_history = self.history[-6:] if len(self.history) > 6 else self.history;
+        history_text = history_to_text(recent_history);
 
         q = self.question.strip();
         ql = q.lower();
@@ -266,6 +271,42 @@ walker:pub ChatWithAI {
             report {"answer": answer, "mode": "chat"};
         } except Exception as e {
             report {"error": "ai_chat_failed", "details": str(e)};
+        }
+    }
+}
+
+walker:pub GenerateElevatorPitch {
+    has token: str;
+    has company_id: str;
+    has event_id: str = DEFAULT_EVENT_ID;
+
+    can generate with Root entry {
+        uid = token_to_user_id(self.token);
+        if uid == "" {
+            report {"error": "unauthorized"};
+            return;
+        }
+
+        assistant = CareerFairAssistant(user_id=uid, event_id=self.event_id);
+        resume_text = assistant.get_resume_text();
+
+        if resume_text.startswith("No resume found")
+        or resume_text.startswith("Resume exists, but raw text is empty") {
+            report {"error": "no_resume"};
+            return;
+        }
+
+        company = get_company(self.event_id, self.company_id);
+        target = "";
+        if company is not None {
+            target = company["name"] + " - " + ", ".join(company["positions"]);
+        }
+
+        try {
+            pitch = assistant.generate_pitch(resume_text, target);
+            report {"pitch": pitch};
+        } except Exception as e {
+            report {"error": "pitch_failed", "details": str(e)};
         }
     }
 }

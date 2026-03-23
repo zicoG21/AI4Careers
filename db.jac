@@ -134,6 +134,20 @@ def init_db -> None {
     )"""
     );
 
+    # Saved companies table
+    c.execute(
+        """CREATE TABLE IF NOT EXISTS saved_companies (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        company_id TEXT NOT NULL,
+        event_id TEXT NOT NULL,
+        pitch TEXT DEFAULT '',
+        saved_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+        UNIQUE(user_id, company_id, event_id)
+    )"""
+    );
+
     # Artifacts table (AI-generated content)
     c.execute(
         """CREATE TABLE IF NOT EXISTS artifacts (
@@ -500,6 +514,57 @@ def get_role(role_id: str) -> dict | None {
         "description": row["description"],
         "tags": json.loads(row["tags"])
     };
+}
+
+# ========== Saved Companies Operations ==========
+"""Save a company for a user (idempotent)."""
+def save_company(user_id: str, company_id: str, event_id: str) -> bool {
+    conn = _conn();
+    id = "sc_" + str(uuid4())[:8];
+    saved_at = datetime.now().isoformat();
+    conn.execute(
+        """INSERT OR IGNORE INTO saved_companies (id, user_id, company_id, event_id, saved_at)
+           VALUES (?, ?, ?, ?, ?)""",
+        (id, user_id, company_id, event_id, saved_at)
+    );
+    conn.commit();
+    conn.close();
+    return True;
+}
+
+"""Remove a saved company."""
+def unsave_company(user_id: str, company_id: str, event_id: str) -> bool {
+    conn = _conn();
+    conn.execute(
+        "DELETE FROM saved_companies WHERE user_id = ? AND company_id = ? AND event_id = ?",
+        (user_id, company_id, event_id)
+    );
+    conn.commit();
+    conn.close();
+    return True;
+}
+
+"""List saved companies for a user, with their saved pitch if any."""
+def list_saved_companies(user_id: str, event_id: str) -> list {
+    conn = _conn();
+    rows = conn.execute(
+        "SELECT company_id, pitch, saved_at FROM saved_companies WHERE user_id = ? AND event_id = ? ORDER BY saved_at DESC",
+        (user_id, event_id)
+    ).fetchall();
+    conn.close();
+    return [{"company_id": row["company_id"], "pitch": row["pitch"], "saved_at": row["saved_at"]} for row in rows];
+}
+
+"""Save a pitch to an already-saved company."""
+def save_pitch(user_id: str, company_id: str, event_id: str, pitch: str) -> bool {
+    conn = _conn();
+    conn.execute(
+        "UPDATE saved_companies SET pitch = ? WHERE user_id = ? AND company_id = ? AND event_id = ?",
+        (pitch, user_id, company_id, event_id)
+    );
+    conn.commit();
+    conn.close();
+    return True;
 }
 
 # Auto-initialize database on module load

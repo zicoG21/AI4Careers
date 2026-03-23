@@ -186,18 +186,18 @@ function Profile() {
         <div className="nav-brand"><h2>AI4Careers</h2></div>
         <div className="nav-links">
           <span className="user-name">Hello, {user?.name}</span>
-          <button className="btn-secondary" onClick={() => navigate('/dashboard')}>Dashboard</button>
+          <button className="btn-secondary" onClick={() => navigate('/dashboard')}>Back to Dashboard</button>
           <button className="btn-secondary" onClick={() => { logout(); navigate('/login'); }}>Logout</button>
         </div>
       </nav>
 
       <div className="dashboard-content">
-        <h1>My Profile</h1>
+        <h2 style={{ marginBottom: '24px', color: '#333', fontSize: '24px' }}>My Profile & Preferences</h2>
 
         {/* Resumes */}
         <div className="card" style={{ marginBottom: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3>My Resumes</h3>
+            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#333' }}>My Resumes</h3>
             <button className="btn-primary" onClick={() => navigate('/resume-upload')}>+ Upload New</button>
           </div>
 
@@ -235,7 +235,7 @@ function Profile() {
 
         {/* Preferences */}
         <div className="card">
-          <h3>Career Preferences</h3>
+          <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#333' }}>Career Preferences</h3>
 
           {prefsError && <div className="error-message">{prefsError}</div>}
           {prefsStatus && <div className="success-message">{prefsStatus}</div>}
