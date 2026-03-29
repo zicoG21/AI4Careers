@@ -152,6 +152,7 @@ glob STATE_TO_REGION: dict = {
          "oklahoma": "Southwest"
      };
 
+# TOOL FUNCTION
 def clamp01(value: float) -> float {
     if value < 0.0 {
         return 0.0;
@@ -192,6 +193,23 @@ def normalize_text(text: str) -> str {
     }
 
     return out.strip();
+}
+
+def normalize_company_query(text: str) -> str {
+    cleaned: str = normalize_text(text);
+
+    while "  " in cleaned {
+        cleaned = cleaned.replace("  ", " ");
+    }
+
+    return cleaned.strip();
+}
+
+def company_name_matches(company_name: str, query_name: str) -> bool {
+    normalized_company: str = normalize_company_query(company_name);
+    normalized_query: str = normalize_company_query(query_name);
+
+    return normalized_company == normalized_query;
 }
 
 
@@ -789,4 +807,106 @@ def rank_companies_for_user(user_id: str, event_id: str) -> dict {
     }
 
     return {"matches": slice_list(ranked, 10), "total_companies_scored": len(ranked)};
+}
+
+def find_company_match_for_user(
+    user_id: str, event_id: str, company_query: str
+) -> dict {
+    user = get_user_by_id(user_id);
+    if user is None {
+        return {"error": "user_not_found"};
+    }
+
+    resume = get_latest_resume(user_id);
+    if resume is None {
+        return {"error": "no_resume"};
+    }
+
+    companies = get_companies_full(event_id);
+
+    for raw_company in companies {
+        company: dict = {};
+        for k in raw_company {
+            company[k] = raw_company[k];
+        }
+
+        company_name: str = str(company["name"]) if "name" in company else "";
+
+        if company_name_matches(company_name, company_query) {
+            scored = score_company(resume, user, company);
+            return {"match": scored, "matched_company_name": company_name};
+        }
+    }
+
+    return {"error": "company_not_found", "query": company_query};
+}
+
+def render_single_match_text(company_result: dict) -> str {
+    lines: list[str] = [];
+
+    lines.append("## " + str(company_result["name"]));
+    lines.append("Score: " + str(company_result["score"]) + "/10");
+    lines.append("");
+
+    lines.append("Roles: " + join_list(company_result["positions"]));
+    lines.append("Location: " + join_list(company_result["regions"]));
+    lines.append("");
+
+    lines.append("Why Fit:");
+    why_fit: list = company_result["why_fit"] if "why_fit" in company_result else [];
+    if len(why_fit) == 0 {
+        lines.append("- No detailed fit rationale available.");
+    } else {
+        for item in why_fit {
+            lines.append("- " + str(item));
+        }
+    }
+    lines.append("");
+
+    lines.append("Action Plan:");
+    action_plan: list = company_result["action_plan"]
+        if "action_plan" in company_result
+        else [];
+    if len(action_plan) == 0 {
+        lines.append("- No action plan available.");
+    } else {
+        for item in action_plan {
+            lines.append("- " + str(item));
+        }
+    }
+    lines.append("");
+
+    lines.append("Details:");
+    lines.append("- Sponsorship: " + str(company_result["sponsorship_label"]));
+    lines.append("- Degree Levels: " + join_list(company_result["degree_levels"]));
+    lines.append("- Majors: " + join_list(company_result["majors"]));
+
+    if "details" in company_result {
+        detail_block = company_result["details"];
+        fair_day: str = str(detail_block["fair_day"])
+            if "fair_day" in detail_block
+            else "";
+        website: str = str(detail_block["website"]) if "website" in detail_block else "";
+        careers_url: str = str(detail_block["careers_url"])
+            if "careers_url" in detail_block
+            else "";
+        sponsorship_notes: str = str(detail_block["sponsorship_notes"])
+            if "sponsorship_notes" in detail_block
+            else "";
+
+        if fair_day != "" {
+            lines.append("- Fair Day: " + fair_day);
+        }
+        if website != "" {
+            lines.append("- Website: " + website);
+        }
+        if careers_url != "" {
+            lines.append("- Careers: " + careers_url);
+        }
+        if sponsorship_notes != "" {
+            lines.append("- Sponsorship Notes: " + sponsorship_notes);
+        }
+    }
+
+    return "\n".join(lines);
 }

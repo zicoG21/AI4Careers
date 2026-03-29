@@ -8,7 +8,12 @@ import from db {
     get_roles,
     get_user_by_id
 }
-import from matching { rank_companies_for_user }
+import from matching {
+    rank_companies_for_user,
+    find_company_match_for_user,
+    render_single_match_text
+}
+
 import from security { token_to_user_id }
 
 glob DEFAULT_EVENT_ID: str = "evt_umich_fall_2025";
@@ -223,8 +228,48 @@ walker:pub ChatWithAI {
         ql = q.lower();
 
         try {
-            # /match -> score all companies, then format top 10
+            # /match -> either rank all companies or show one specific company
             if ql.startswith("/match") {
+                extra = q[6:].strip();
+
+                # Case 1: specific company query, e.g. /match Google
+                if extra != "" {
+                    single_result = find_company_match_for_user(
+                        uid, self.event_id, extra
+                    );
+
+                    if "error" in single_result {
+                        if single_result["error"] == "no_resume" {
+                            report {
+                                "answer": "I couldn't find a resume for you yet. Please upload a resume PDF first, then try /match again.",
+                                "mode": "match"
+                            };
+                            return;
+                        }
+
+                        if single_result["error"] == "company_not_found" {
+                            report {
+                                "answer": "I couldn't find a company matching \"" + extra.strip() + "\" in the current career fair database. Please check the spelling and try again.",
+                                "mode": "match"
+                            };
+                            return;
+                        }
+
+                        report {
+                            "error": "match_failed",
+                            "details": single_result["error"]
+                        };
+                        return;
+                    }
+
+                    company_result = single_result["match"];
+                    answer = render_single_match_text(company_result);
+
+                    report {"answer": answer, "mode": "match", "match": company_result};
+                    return;
+                }
+
+                # Case 2: no company specified, return top 10 ranked companies
                 result = rank_companies_for_user(uid, self.event_id);
 
                 if "error" in result {
