@@ -8,6 +8,7 @@ import from db {
     get_roles,
     get_user_by_id
 }
+import from matching { rank_companies_for_user }
 import from security { token_to_user_id }
 
 glob DEFAULT_EVENT_ID: str = "evt_umich_fall_2025";
@@ -161,6 +162,13 @@ obj CareerFairAssistant {
     def generate_pitch(resume_text: str, target: str) -> str by llm();
 }
 
+obj MatchFormatter {
+    def render(top_matches_json: str) -> str by llm();
+}
+
+sem MatchFormatter.render = "You are formatting pre-ranked career fair company matches for a student. IMPORTANT: Do not change the ranking, do not invent companies, and do not change the provided scores. Use the companies exactly in the given order. Return markdown. Start with a short 1-2 sentence intro, then list all 10 companies. For each company include: 1) company name as a heading, 2) Score in the format 'Score: X/10', 3) Roles, 4) Location, 5) Why Fit as bullet points using the provided why_fit and matched_skills, 6) Action Plan as bullet points using the provided action_plan, 7) Details including sponsorship label, degree levels, and majors. Keep it concise but informative.";
+sem MatchFormatter.render.top_matches_json = "JSON list of the top 10 pre-scored companies, already ranked best to worst.";
+
 sem CareerFairAssistant.answer = "You are an AI career fair assistant for a University of Michigan student. Answer naturally and helpfully. Use tools before making claims about the student's resume or the career fair database. If asked for the best-fit companies, compare the student's resume, profile, locations, sponsorship needs, and company/role information, then recommend a few concrete companies with reasons. If resume data is missing, say so clearly and ask the user to upload one.";
 sem CareerFairAssistant.answer.question = "The user's newest chat message.";
 sem CareerFairAssistant.answer.history_text = "Conversation history formatted as plain text, oldest to newest.";
@@ -215,16 +223,33 @@ walker:pub ChatWithAI {
         ql = q.lower();
 
         try {
-            # /match  -> resume/company matching
+            # /match -> score all companies, then format top 10
             if ql.startswith("/match") {
-                extra = q[6:].strip();
-                match_prompt = "Please match my resume and profile to the best-fit companies in this career fair. Recommend 5-8 companies with concrete reasons, likely-fit roles, and a short action plan for each.";
-                if extra != "" {
-                    match_prompt = match_prompt + " Additional constraints from user: " + extra;
+                result = rank_companies_for_user(uid, self.event_id);
+
+                if "error" in result {
+                    if result["error"] == "no_resume" {
+                        report {
+                            "answer": "I couldn't find a resume for you yet. Please upload a resume PDF first, then try /match again.",
+                            "mode": "match"
+                        };
+                        return;
+                    }
+
+                    report {"error": "match_failed", "details": result["error"]};
+                    return;
                 }
 
-                answer = assistant.answer(match_prompt, history_text);
-                report {"answer": answer, "mode": "match"};
+                matches = result["matches"];
+                formatter = MatchFormatter();
+                answer = formatter.render(json.dumps(matches));
+
+                report {
+                    "answer": answer,
+                    "mode": "match",
+                    "matches": matches,
+                    "total_companies_scored": result["total_companies_scored"]
+                };
                 return;
             }
 

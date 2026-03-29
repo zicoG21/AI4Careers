@@ -203,7 +203,9 @@ def get_user_by_email(email: str) -> dict | None {
         "name": row["name"],
         "created_at": row["created_at"],
         "needs_sponsorship": bool(row["needs_sponsorship"]),
-        "work_authorization": json.loads(row["work_authorization"]) if row["work_authorization"].startswith('[') else [row["work_authorization"]] if row["work_authorization"] else [],
+        "work_authorization": json.loads(row["work_authorization"])
+            if row["work_authorization"].startswith('[')
+            else [row["work_authorization"]] if row["work_authorization"] else [],
         "preferred_locations": json.loads(row["preferred_locations"]),
         "work_modes": json.loads(row["work_modes"]),
         "role_types": json.loads(row["role_types"])
@@ -228,7 +230,9 @@ def get_user_by_id(user_id: str) -> dict | None {
         "name": row["name"],
         "created_at": row["created_at"],
         "needs_sponsorship": bool(row["needs_sponsorship"]),
-        "work_authorization": json.loads(row["work_authorization"]) if row["work_authorization"].startswith('[') else [row["work_authorization"]] if row["work_authorization"] else [],
+        "work_authorization": json.loads(row["work_authorization"])
+            if row["work_authorization"].startswith('[')
+            else [row["work_authorization"]] if row["work_authorization"] else [],
         "preferred_locations": json.loads(row["preferred_locations"]),
         "work_modes": json.loads(row["work_modes"]),
         "role_types": json.loads(row["role_types"])
@@ -379,8 +383,7 @@ def list_resumes(user_id: str) -> list {
             "filename": row["filename"],
             "uploaded_at": row["uploaded_at"],
             "skills_count": len(json.loads(row["skills"]))
-        }
-        for row in rows
+        } for row in rows
     ];
 }
 
@@ -388,8 +391,7 @@ def list_resumes(user_id: str) -> list {
 def delete_resume(resume_id: str, user_id: str) -> bool {
     conn = _conn();
     result = conn.execute(
-        "DELETE FROM resumes WHERE resume_id = ? AND user_id = ?",
-        (resume_id, user_id)
+        "DELETE FROM resumes WHERE resume_id = ? AND user_id = ?", (resume_id, user_id)
     );
     conn.commit();
     conn.close();
@@ -552,7 +554,13 @@ def list_saved_companies(user_id: str, event_id: str) -> list {
         (user_id, event_id)
     ).fetchall();
     conn.close();
-    return [{"company_id": row["company_id"], "pitch": row["pitch"], "saved_at": row["saved_at"]} for row in rows];
+    return [
+        {
+            "company_id": row["company_id"],
+            "pitch": row["pitch"],
+            "saved_at": row["saved_at"]
+        } for row in rows
+    ];
 }
 
 """Save a pitch to an already-saved company."""
@@ -566,6 +574,41 @@ def save_pitch(user_id: str, company_id: str, event_id: str, pitch: str) -> bool
     conn.close();
     return True;
 }
+
+"""Extract entire data from a specific company."""
+def get_companies_full(event_id: str) -> list {
+    import json;
+    conn = _conn();
+    rows = conn.execute(
+        "SELECT * FROM companies WHERE event_id = ?", (event_id, )
+    ).fetchall();
+    conn.close();
+
+    results = [];
+    for row in rows {
+        results.append(
+            {
+                "company_id": row["company_id"],
+                "name": row["name"],
+                "fair_day": row["fair_day"],
+                "is_multi_day": bool(row["is_multi_day"]),
+                "website": row["website"],
+                "careers_url": row["careers_url"],
+                "description": row["description"],
+                "positions": json.loads(row["positions"]),
+                "degree_levels": json.loads(row["degree_levels"]),
+                "academic_years": json.loads(row["academic_years"]),
+                "majors": json.loads(row["majors"]),
+                "sponsorship": json.loads(row["sponsorship"]),
+                "sponsorship_notes": row["sponsorship_notes"],
+                "regions": json.loads(row["regions"]),
+                "accepts_hardcopy": bool(row["accepts_hardcopy"])
+            }
+        );
+    }
+    return results;
+}
+
 
 # Auto-initialize database on module load
 glob _db_initialized: bool = (lambda : (init_db(), True)[1])();
