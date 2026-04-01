@@ -95,17 +95,29 @@ def init_db() -> None {
         majors TEXT DEFAULT '[]',
         sponsorship TEXT DEFAULT '[]',
         sponsorship_notes TEXT DEFAULT '',
+        sponsorship_flag TEXT DEFAULT 'No',
+        sponsorship_status TEXT DEFAULT 'No',
         regions TEXT DEFAULT '[]',
         accepts_hardcopy INTEGER DEFAULT 0,
         FOREIGN KEY (event_id) REFERENCES events(event_id) ON DELETE CASCADE
     )"""
     );
 
+    # Migration: add new columns if they don't exist
+    existing_company_cols = [col["name"] for col in c.execute("PRAGMA table_info(companies)").fetchall()];
+    if "sponsorship_flag" not in existing_company_cols {
+        c.execute("ALTER TABLE companies ADD COLUMN sponsorship_flag TEXT DEFAULT 'No'");
+    }
+    if "sponsorship_status" not in existing_company_cols {
+        c.execute("ALTER TABLE companies ADD COLUMN sponsorship_status TEXT DEFAULT 'No'");
+    }
+
     # Roles table
     c.execute(
         """CREATE TABLE IF NOT EXISTS roles (
         role_id TEXT PRIMARY KEY,
         event_id TEXT NOT NULL,
+        company_id TEXT DEFAULT '',
         title TEXT NOT NULL,
         category TEXT DEFAULT '',
         location TEXT DEFAULT '',
@@ -113,9 +125,23 @@ def init_db() -> None {
         sponsorship TEXT DEFAULT 'Unknown',
         description TEXT DEFAULT '',
         tags TEXT DEFAULT '[]',
+        role_source_url TEXT DEFAULT '',
+        role_last_checked TEXT DEFAULT '',
         FOREIGN KEY (event_id) REFERENCES events(event_id) ON DELETE CASCADE
     )"""
     );
+
+    # Migration: add new role columns if they don't exist
+    existing_role_cols = [col["name"] for col in c.execute("PRAGMA table_info(roles)").fetchall()];
+    if "company_id" not in existing_role_cols {
+        c.execute("ALTER TABLE roles ADD COLUMN company_id TEXT DEFAULT ''");
+    }
+    if "role_source_url" not in existing_role_cols {
+        c.execute("ALTER TABLE roles ADD COLUMN role_source_url TEXT DEFAULT ''");
+    }
+    if "role_last_checked" not in existing_role_cols {
+        c.execute("ALTER TABLE roles ADD COLUMN role_last_checked TEXT DEFAULT ''");
+    }
 
     # Fit scores table
     c.execute(
@@ -414,10 +440,48 @@ def get_companies(event_id: str, filters: dict) -> list {
     conn = _conn();
 
     query = "SELECT * FROM companies WHERE event_id = ?";
-    params = [event_id];
+    params: list = [event_id];
 
-    # Apply filters if provided
-    # (simplified - can be extended)
+    fair_day = filters.get("fair_day", "");
+    if fair_day != "" {
+        query += " AND fair_day LIKE ?";
+        params.append("%" + fair_day + "%");
+    }
+
+    position_type = filters.get("position_type", "");
+    if position_type != "" {
+        query += " AND positions LIKE ?";
+        params.append("%" + position_type + "%");
+    }
+
+    sponsors = filters.get("sponsors", "");
+    if sponsors != "" {
+        query += " AND sponsorship_flag = ?";
+        params.append(sponsors);
+    } elif filters.get("needs_sponsorship", False) {
+        query += " AND sponsorship_flag IN ('Yes', 'Maybe')";
+    }
+
+    region = filters.get("region", "");
+    if region != "" {
+        query += " AND regions LIKE ?";
+        params.append("%" + region + "%");
+    }
+
+    major_search = filters.get("major_search", "");
+    if major_search != "" {
+        query += " AND majors LIKE ?";
+        params.append("%" + major_search + "%");
+    }
+
+    search = filters.get("search", "");
+    if search != "" {
+        query += " AND (name LIKE ? OR description LIKE ?)";
+        params.append("%" + search + "%");
+        params.append("%" + search + "%");
+    }
+
+    query += " ORDER BY name";
     rows = conn.execute(query, params).fetchall();
     conn.close();
 
@@ -429,10 +493,18 @@ def get_companies(event_id: str, filters: dict) -> list {
                 "name": row["name"],
                 "fair_day": row["fair_day"],
                 "is_multi_day": bool(row["is_multi_day"]),
+                "website": row["website"],
+                "careers_url": row["careers_url"],
                 "positions": json.loads(row["positions"]),
                 "degree_levels": json.loads(row["degree_levels"]),
+                "academic_years": json.loads(row["academic_years"]),
+                "majors": json.loads(row["majors"]),
                 "sponsorship": json.loads(row["sponsorship"]),
+                "sponsorship_notes": row["sponsorship_notes"],
+                "sponsorship_flag": row["sponsorship_flag"],
+                "sponsorship_status": row["sponsorship_status"],
                 "regions": json.loads(row["regions"]),
+                "accepts_hardcopy": bool(row["accepts_hardcopy"]),
                 "description": row["description"][:200]
             }
         );
@@ -468,16 +540,55 @@ def get_company(event_id: str, company_id: str) -> dict | None {
         "majors": json.loads(row["majors"]),
         "sponsorship": json.loads(row["sponsorship"]),
         "sponsorship_notes": row["sponsorship_notes"],
+        "sponsorship_flag": row["sponsorship_flag"],
+        "sponsorship_status": row["sponsorship_status"],
         "regions": json.loads(row["regions"]),
         "accepts_hardcopy": bool(row["accepts_hardcopy"])
     };
 }
 
-"""Get roles by event."""
-def get_roles(event_id: str) -> list {
+"""Get roles by event with optional filters."""
+def get_roles(event_id: str, filters: dict = {}) -> list {
     import json;
     conn = _conn();
-    rows = conn.execute("SELECT * FROM roles WHERE event_id = ?", (event_id, )).fetchall();
+
+    query = "SELECT * FROM roles WHERE event_id = ?";
+    params: list = [event_id];
+
+    company_id = filters.get("company_id", "");
+    if company_id != "" {
+        query += " AND company_id = ?";
+        params.append(company_id);
+    }
+
+    location = filters.get("location", "");
+    if location != "" {
+        query += " AND location LIKE ?";
+        params.append("%" + location + "%");
+    }
+
+    work_mode = filters.get("work_mode", "");
+    if work_mode != "" {
+        query += " AND work_mode LIKE ?";
+        params.append("%" + work_mode + "%");
+    }
+
+    sponsors = filters.get("sponsors", "");
+    if sponsors != "" {
+        query += " AND sponsorship LIKE ?";
+        params.append("%" + sponsors + "%");
+    } elif filters.get("needs_sponsorship", False) {
+        query += " AND sponsorship NOT LIKE '%Will not%'";
+    }
+
+    search = filters.get("search", "");
+    if search != "" {
+        query += " AND (title LIKE ? OR description LIKE ?)";
+        params.append("%" + search + "%");
+        params.append("%" + search + "%");
+    }
+
+    rows = conn.execute(query, params).fetchall();
     conn.close();
 
     results = [];
@@ -485,10 +596,16 @@ def get_roles(event_id: str) -> list {
         results.append(
             {
                 "role_id": row["role_id"],
+                "company_id": row["company_id"],
                 "title": row["title"],
+                "category": row["category"],
                 "location": row["location"],
                 "work_mode": row["work_mode"],
-                "sponsorship": row["sponsorship"]
+                "sponsorship": row["sponsorship"],
+                "description": row["description"],
+                "tags": json.loads(row["tags"]),
+                "role_source_url": row["role_source_url"],
+                "role_last_checked": row["role_last_checked"]
             }
         );
     }
@@ -601,6 +718,8 @@ def get_companies_full(event_id: str) -> list {
                 "majors": json.loads(row["majors"]),
                 "sponsorship": json.loads(row["sponsorship"]),
                 "sponsorship_notes": row["sponsorship_notes"],
+                "sponsorship_flag": row["sponsorship_flag"],
+                "sponsorship_status": row["sponsorship_status"],
                 "regions": json.loads(row["regions"]),
                 "accepts_hardcopy": bool(row["accepts_hardcopy"])
             }

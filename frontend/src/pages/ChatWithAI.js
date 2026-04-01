@@ -31,9 +31,7 @@ function ChatWithAI() {
     const [messages, setMessages] = useState([
         {
             role: 'assistant',
-            content:
-                'Hi! You can use commands:\n/match -> rank your best-fit companies\n/match [company] -> score one specific company\n/visual -> upload a company logo image and identify the company, then score your fit\n/optimize -> optimize and polish your resume text\n/pitch -> generate a tailored elevator pitch\n\nYou can also just upload an image without typing anything, and I will treat it as /visual.'
-            ,
+            content: "Hi! I'm your AI career coach. Here's what I can do:\n\n**/match** → rank all companies by fit with your resume\n**/match [company]** → score your fit with one specific company\n**/pitch** → generate a tailored elevator pitch for a company\n**/optimize** → polish and strengthen your resume text\n**/visual** → upload a company logo to identify it and score your fit\n\nYou can also upload an image directly without any command and I'll treat it as /visual.\n\nOr just ask me anything — about sponsorship, locations, majors, how to prioritize the fair, and more.",
         },
     ]);
     const [input, setInput] = useState('');
@@ -206,6 +204,37 @@ function ChatWithAI() {
                 </div>
 
                 {error && <div className="error-message">{error}</div>}
+
+                {(
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                        {[
+                            { label: '🎯 Match me with companies', command: '/match' },
+                            { label: '🗣️ Generate elevator pitch', command: '/pitch' },
+                            { label: '📄 Optimize my resume', command: '/optimize' },
+                        ].map(({ label, command }) => (
+                            <button
+                                key={command}
+                                type="button"
+                                onClick={() => setInput(command)}
+                                style={{
+                                    padding: '10px 16px',
+                                    borderRadius: '20px',
+                                    border: '1px solid #cbd5e0',
+                                    background: '#f7fafc',
+                                    color: '#2d3748',
+                                    fontSize: '0.88rem',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s',
+                                    whiteSpace: 'nowrap',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = '#edf2f7'; e.currentTarget.style.borderColor = '#a0aec0'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = '#f7fafc'; e.currentTarget.style.borderColor = '#cbd5e0'; }}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 <form className="chat-input-bar" onSubmit={handleSubmit}>
                     {selectedImagePreview && (

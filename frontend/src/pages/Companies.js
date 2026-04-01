@@ -7,7 +7,16 @@ import { listCompanies, getCompany, saveCompany, unsaveCompany, listSavedCompani
 
 const EVENT_ID = 'evt_umich_fall_2025';
 
-function sponsorSummary(sponsorship) {
+function sponsorSummary(sponsorship, sponsorshipFlag) {
+  // Use clean sponsorship_flag if available
+  if (sponsorshipFlag) {
+    const flag = String(sponsorshipFlag).trim().toLowerCase();
+    if (flag === 'yes') return { label: 'Sponsors Visas', color: '#38a169' };
+    if (flag === 'no') return { label: 'No Sponsorship', color: '#e53e3e' };
+    if (flag === 'maybe' || flag === 'limited' || flag === 'case-by-case') return { label: 'Check Details', color: '#dd6b20' };
+  }
+
+  // Fallback: string match on raw sponsorship array
   if (!Array.isArray(sponsorship) || sponsorship.length === 0) {
     return { label: 'Check Details', color: '#dd6b20' };
   }
@@ -86,7 +95,7 @@ function ScoreBadge({ score }) {
 }
 
 function CompanyCard({ company, isSaved, onSaveToggle, onClick, score }) {
-  const sponsor = sponsorSummary(company.sponsorship);
+  const sponsor = sponsorSummary(company.sponsorship, company.sponsorship_flag);
   return (
     <div
       onClick={onClick}
@@ -142,7 +151,7 @@ function CompanyCard({ company, isSaved, onSaveToggle, onClick, score }) {
 }
 
 function CompanyModal({ company, onClose, isSaved, onSaveToggle, savedPitch, onPitchSaved, token, score }) {
-  const sponsor = sponsorSummary(company.sponsorship);
+  const sponsor = sponsorSummary(company.sponsorship, company.sponsorship_flag);
   const [pitchDraft, setPitchDraft] = useState('');
   const [pitchLoading, setPitchLoading] = useState(false);
   const [pitchError, setPitchError] = useState('');
@@ -385,13 +394,18 @@ function Companies() {
 
   const allPositions = useMemo(() => {
     const set = new Set();
-    companies.forEach(c => c.positions?.forEach(p => set.add(p)));
+    companies.forEach(c => c.positions?.forEach(p => {
+      if (!p.includes(',')) set.add(p);
+    }));
     return Array.from(set).sort();
   }, [companies]);
 
   const allRegions = useMemo(() => {
     const set = new Set();
-    companies.forEach((c) => c.regions?.forEach((r) => set.add(r)));
+    companies.forEach((c) => c.regions?.forEach((r) => {
+      // Skip entries that contain multiple regions (contain a comma)
+      if (!r.includes(',')) set.add(r);
+    }));
 
     return [
       'All',
@@ -434,7 +448,7 @@ function Companies() {
     }
     if (filterSponsorships.length > 0) {
       result = result.filter(c => {
-        const s = sponsorSummary(c.sponsorship);
+        const s = sponsorSummary(c.sponsorship, c.sponsorship_flag);
         return filterSponsorships.includes(s.label);
       });
     }
