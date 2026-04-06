@@ -60,7 +60,7 @@ Verify:
 
 `jac.toml` is **gitignored** — each developer keeps their own. Copy the example and edit it:
 
-```bash
+```b
 cd AI4Careers
 cp jac.toml.example jac.toml
 ```
@@ -203,15 +203,3 @@ All endpoints are `POST /walker/<WalkerName>` at `http://localhost:8000`.
 
 ---
 
-## Coming Soon
-
-- [ ] Company browser filters (sponsorship, region, position type, fair day)
-- [ ] AI-powered fit scoring (resume vs. company roles)
-- [ ] Personalized pitch generation
-- [ ] Company recommendations ranked by resume fit
-- [ ] Select which resume the AI uses
-- [ ] Production-grade auth (bcrypt passwords, JWT tokens with expiry)
-
-## License
-
-MIT
