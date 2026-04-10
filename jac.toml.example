@@ -8,6 +8,9 @@ entry-point = "main.jac"
 
 [serve]
 
+[plugins.scale.secrets]
+OPENAI_API_KEY="${OPENAI_API_KEY}"
+
 [plugins.client]
 
 # --- Choose your model ---
