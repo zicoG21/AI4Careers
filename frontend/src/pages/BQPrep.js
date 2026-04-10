@@ -100,6 +100,8 @@ const INPUT = {
   borderRadius: 10,
   padding: '14px 16px',
   fontSize: 15,
+  fontFamily: 'inherit',
+  fontWeight: 450,
   outline: 'none',
   transition: 'border-color 0.15s',
   boxSizing: 'border-box',

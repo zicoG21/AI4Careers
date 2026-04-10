@@ -338,6 +338,8 @@ function ChatWithAI() {
                             borderRadius: 12,
                             padding: 12,
                             fontSize: 14,
+                            fontFamily: 'inherit',
+                            fontWeight: 450,
                             outline: 'none',
                             resize: 'vertical',
                             background: '#fff',

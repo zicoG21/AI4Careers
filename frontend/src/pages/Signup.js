@@ -6,6 +6,7 @@ import { Loader2, Sparkles } from 'lucide-react';
 const INPUT = {
   background: '#f8f4ec', border: '1px solid #d4caba', color: '#0f0f0d',
   width: '100%', borderRadius: 10, padding: '14px 16px', fontSize: 15,
+  fontFamily: 'inherit', fontWeight: 450,
   outline: 'none', transition: 'border-color 0.15s', boxSizing: 'border-box',
 };
 const onFocus = (e) => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.35)'; };
