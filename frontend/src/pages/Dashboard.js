@@ -5,7 +5,7 @@ import Layout from '../components/Layout';
 import { rtListResumes, rtListExperiences, rtListStories, listSavedCompanies } from '../services/api';
 import {
   FileText, Building2, Bot, User, Briefcase,
-  MessageSquare, ArrowRight, Sparkles,
+  MessageSquare, ArrowRight,
 } from 'lucide-react';
 
 const chip = (label, color = '#4a4540') => (
@@ -181,9 +181,7 @@ function Dashboard() {
           {/* Profile Card */}
           <div style={{ borderRadius: 12, border: '1px solid #d4caba', background: '#eae5da', padding: 28 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1a1a18' }}>
-                <Sparkles size={20} style={{ color: '#f5f0e8' }} />
-              </div>
+              <img src="/logo.png" alt="AI4Careers" style={{ width: 48, height: 48, borderRadius: 12 }} />
               <div>
                 <p style={{ fontWeight: 600, fontSize: 16, color: '#0f0f0d', margin: 0 }}>{user.name}</p>
                 <p style={{ fontSize: 14, color: '#7a7268', marginTop: 2 }}>{user.email}</p>

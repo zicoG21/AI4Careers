@@ -68,22 +68,55 @@ sem ResumeStructured.certifications = "List of certifications or awards, empty l
 """Parse raw resume text into a structured resume object."""
 def parse_resume_with_llm(raw_text: str) -> ResumeStructured by llm();
 
-"""Rewrite a single bullet point to be shorter."""
+"""Rewrite the given resume bullet point to be more concise while preserving all key details. Return ONLY the rewritten bullet point text — no explanations, no meta-commentary."""
 def shorten_bullet(bullet: str) -> str by llm();
 
-"""Rewrite a single bullet point to be longer and more detailed."""
+"""Rewrite the given resume bullet point to be longer and more detailed, adding specifics about impact, scope, or technologies. Return ONLY the rewritten bullet point text — no explanations."""
 def lengthen_bullet(bullet: str) -> str by llm();
 
-"""Rewrite a single resume bullet point following the user's instruction."""
+"""Rewrite the given resume bullet point according to the user's instruction. Return ONLY the rewritten bullet point text — do not explain the changes or include any commentary."""
 def rewrite_bullet(bullet: str, instruction: str) -> str by llm();
 
-"""Tailor resume bullets to match the job description."""
+"""You are rewriting existing resume bullets for a specific job target.
+
+Treat each input bullet as the source of truth. Your job is to REPLACE each original bullet with a better version of that same bullet, not to explain how it should be changed.
+
+CRITICAL RULES:
+- Return the SAME NUMBER of bullet points as the input, in the same order.
+- Each output item must be a finished resume bullet that could be pasted directly onto the resume.
+- Preserve the candidate's actual work, tools, and accomplishments. Rephrase; do not invent new projects or responsibilities.
+- Incorporate relevant keywords from the job_description only when they genuinely match the original bullet.
+- Start each bullet with a strong past-tense action verb.
+- Keep each bullet concise and concrete.
+
+NEVER write bullets that sound like instructions, commentary, or analysis.
+Do NOT use phrases like:
+- "Highlight..."
+- "Emphasize..."
+- "Showcase..."
+- "Mention..."
+- "Aligning with..."
+- "Relevant to..."
+- "To demonstrate..."
+- "To match the role..."
+- "To showcase..."
+- "Adapted ... to highlight ..."
+
+BAD:
+- "Emphasized Python experience to match machine learning qualifications."
+- "Showcased collaboration with research labs, aligning with teamwork skills."
+
+GOOD:
+- "Built Python-based deep learning pipelines for medical imaging experiments, improving model training workflows and evaluation speed."
+- "Collaborated with cross-functional research teams to develop CLI tools and support publication-driven analysis workflows."
+
+Return ONLY the rewritten bullet points with no explanation, no notes, and no extra text."""
 def tailor_bullets(bullets: list[str], job_description: str, target_role: str) -> list[str] by llm();
 
-"""Generate a resume summary targeting the given role and company."""
+"""Write a 2-3 sentence professional summary for this candidate targeting the given role at the given company. Return ONLY the summary paragraph — no labels, no headings."""
 def generate_summary(structured_resume: str, target_role: str, company: str) -> str by llm();
 
-"""Strengthen bullet points by adding quantitative metrics."""
+"""Rewrite each bullet point to include quantitative metrics (numbers, percentages, dollar amounts, time saved, users served, etc.) where plausible. Return ONLY the rewritten bullet points — same count, same order. Each must be an actual achievement statement, not a suggestion."""
 def quantify_bullets(bullets: list[str]) -> list[str] by llm();
 
 obj SkillMatchResult {

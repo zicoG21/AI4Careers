@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const INPUT = {
   background: '#f8f4ec', border: '1px solid #d4caba', color: '#0f0f0d',
@@ -38,9 +38,7 @@ function Login() {
       <div style={{ width: '100%', maxWidth: 420 }}>
 
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 56, height: 56, borderRadius: 16, background: '#1a1a18', boxShadow: '0 8px 24px rgba(0,0,0,0.2)', marginBottom: 16 }}>
-            <Sparkles size={24} style={{ color: '#f5f0e8' }} />
-          </div>
+          <img src="/logo.png" alt="AI4Careers" style={{ width: 56, height: 56, borderRadius: 16, boxShadow: '0 8px 24px rgba(0,0,0,0.2)', marginBottom: 16 }} />
           <h1 style={{ fontSize: 28, fontWeight: 700, color: '#0f0f0d', margin: 0 }}>AI4Careers</h1>
           <p style={{ fontSize: 14, color: '#7a7268', marginTop: 6 }}>Your AI-powered career toolkit</p>
         </div>

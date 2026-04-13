@@ -1867,8 +1867,6 @@ function ResumeLabDetail({ id, navigate }) {
   const [exporting, setExporting] = useState(false);
   const [showMetaModal, setShowMetaModal] = useState(false);
   const [contactForm, setContactForm] = useState(() => emptyContactForm());
-  const [savingContact, setSavingContact] = useState(false);
-  const [contactSaveMsg, setContactSaveMsg] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -1929,7 +1927,7 @@ function ResumeLabDetail({ id, navigate }) {
   useEffect(() => {
     if (!resume?.resume_id) return;
     setContactForm(contactToForm(resume.parsed?.contact));
-  // Intentionally only when switching resume; other updates sync via saveContactFields / saveEdits.
+  // Intentionally only when switching resume; other updates sync via saveEdits.
   // eslint-disable-next-line react-hooks/exhaustive-deps -- resume?.resume_id only
   }, [resume?.resume_id]);
 
@@ -1938,6 +1936,7 @@ function ResumeLabDetail({ id, navigate }) {
     setTailoredParsed(null);
     setEditedParsed(cloneParsed(resume.parsed || {}));
     setEditVersionName(resume.version_name || '');
+    setContactForm(contactToForm(resume.parsed?.contact));
     setEditMode(true);
   }
 
@@ -1964,11 +1963,17 @@ function ResumeLabDetail({ id, navigate }) {
     setSaving(true);
     setSaveError('');
     try {
+      const merged = cloneParsed(editedParsed);
+      merged.contact = {};
+      CONTACT_FORM_KEYS.forEach(({ key }) => {
+        const v = contactForm[key]?.trim();
+        if (isRenderableContactValue(v)) merged.contact[key] = v;
+      });
       await rtUpdateResumeVersion(resume.resume_id, { version_name: editVersionName.trim() });
-      await rtUpdateResumeParsed(resume.resume_id, editedParsed);
+      await rtUpdateResumeParsed(resume.resume_id, merged);
       const nextVersionName = editVersionName.trim() || resume.version_name;
-      setResume((prev) => (prev ? { ...prev, version_name: nextVersionName, parsed: editedParsed } : prev));
-      setContactForm(contactToForm(editedParsed.contact));
+      setResume((prev) => (prev ? { ...prev, version_name: nextVersionName, parsed: merged } : prev));
+      setContactForm(contactToForm(merged.contact));
       setEditMode(false);
       setEditedParsed(null);
       setEditVersionName('');
@@ -1981,27 +1986,6 @@ function ResumeLabDetail({ id, navigate }) {
     }
   }
 
-  async function saveContactFields() {
-    if (!resume || editMode) return;
-    setSavingContact(true);
-    setContactSaveMsg('');
-    try {
-      const next = cloneParsed(resume.parsed);
-      next.contact = {};
-      CONTACT_FORM_KEYS.forEach(({ key }) => {
-        const v = contactForm[key]?.trim();
-        if (isRenderableContactValue(v)) next.contact[key] = v;
-      });
-      await rtUpdateResumeParsed(resume.resume_id, next);
-      setResume((prev) => (prev ? { ...prev, parsed: next } : prev));
-      setContactSaveMsg('Saved');
-      setTimeout(() => setContactSaveMsg(''), 2800);
-    } catch (err) {
-      setContactSaveMsg(getApiError(err) || 'Save failed');
-    } finally {
-      setSavingContact(false);
-    }
-  }
 
   async function handleExportDocx() {
     if (!resume) return;
@@ -2334,7 +2318,7 @@ function ResumeLabDetail({ id, navigate }) {
                       <Loader2 size={12} style={spinStyle} /> Rewriting…
                     </div>
                   ) : (
-                    <span style={{ fontSize: 14, lineHeight: 1.6, color: changed ? '#4a4540' : '#0f0f0d' }}>{b}</span>
+                    <span style={{ fontSize: 14, lineHeight: 1.6, color: changed ? '#92400e' : '#0f0f0d', background: changed ? 'rgba(251,191,36,0.18)' : 'transparent', borderRadius: changed ? 4 : 0, padding: changed ? '1px 4px' : 0 }}>{b}</span>
                   )}
                 </div>
                 {!tailoredParsed && (
@@ -2580,9 +2564,14 @@ function ResumeLabDetail({ id, navigate }) {
           editMode && editedParsed
             ? eTextarea(editedParsed.summary, (v) => updateEdit((p) => { p.summary = v; }), 'Professional summary…', 4)
             : (
-              <p style={{ fontSize: 14, lineHeight: 1.6, color: tailoredParsed && parsed.summary !== origParsed.summary ? '#4a4540' : '#0f0f0d', margin: 0 }}>
-                {parsed.summary}
-              </p>
+              (() => {
+                const summaryChanged = tailoredParsed && parsed.summary !== origParsed.summary;
+                return (
+                  <p style={{ fontSize: 14, lineHeight: 1.6, color: summaryChanged ? '#92400e' : '#0f0f0d', background: summaryChanged ? 'rgba(251,191,36,0.18)' : 'transparent', borderRadius: summaryChanged ? 6 : 0, padding: summaryChanged ? '4px 8px' : 0, margin: 0 }}>
+                    {parsed.summary}
+                  </p>
+                );
+              })()
             ),
         );
 
@@ -2625,8 +2614,8 @@ function ResumeLabDetail({ id, navigate }) {
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                           <div>
-                            <p style={{ fontWeight: 600, fontSize: 14, color: '#0f0f0d', margin: 0 }}>{exp.role}</p>
-                            <p style={{ fontSize: 12, marginTop: 4, color: '#7a7268', marginBottom: 0 }}>
+                            <p style={{ fontWeight: 600, fontSize: 14, color: tailoredParsed && origExp && exp.role !== origExp.role ? '#92400e' : '#0f0f0d', background: tailoredParsed && origExp && exp.role !== origExp.role ? 'rgba(251,191,36,0.18)' : 'transparent', borderRadius: 4, padding: tailoredParsed && origExp && exp.role !== origExp.role ? '1px 4px' : 0, margin: 0 }}>{exp.role}</p>
+                            <p style={{ fontSize: 12, marginTop: 4, color: tailoredParsed && origExp && exp.company !== origExp.company ? '#92400e' : '#7a7268', marginBottom: 0 }}>
                               {exp.company}
                               {exp.location ? ` · ${exp.location}` : ''}
                             </p>
@@ -2699,7 +2688,7 @@ function ResumeLabDetail({ id, navigate }) {
                         </div>
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                          <p style={{ fontWeight: 600, fontSize: 14, color: '#0f0f0d', margin: 0 }}>{proj.name}</p>
+                          <p style={{ fontWeight: 600, fontSize: 14, color: tailoredParsed && origProj && proj.name !== origProj.name ? '#92400e' : '#0f0f0d', background: tailoredParsed && origProj && proj.name !== origProj.name ? 'rgba(251,191,36,0.18)' : 'transparent', borderRadius: 4, padding: tailoredParsed && origProj && proj.name !== origProj.name ? '1px 4px' : 0, margin: 0 }}>{proj.name}</p>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 16 }}>
                             <span style={{ fontSize: 12, color: '#9a9288' }}>{proj.dates}</span>
                             {!tailoredParsed && (
@@ -2838,7 +2827,9 @@ function ResumeLabDetail({ id, navigate }) {
         return renderSectionWrapper(
           'skills',
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {(editMode && editedParsed ? editedParsed.skills : parsed.skills).map((s, i) => (
+            {(editMode && editedParsed ? editedParsed.skills : parsed.skills).map((s, i) => {
+              const skillIsNew = tailoredParsed && !(origParsed.skills || []).includes(s);
+              return (
               <span
                 key={i}
                 style={{
@@ -2848,9 +2839,9 @@ function ResumeLabDetail({ id, navigate }) {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 4,
-                  background: '#f0ebe2',
-                  border: '1px solid #d4caba',
-                  color: '#4a4540',
+                  background: skillIsNew ? 'rgba(251,191,36,0.22)' : '#f0ebe2',
+                  border: skillIsNew ? '1px solid #f59e0b' : '1px solid #d4caba',
+                  color: skillIsNew ? '#92400e' : '#4a4540',
                 }}
               >
                 {s}
@@ -2864,7 +2855,8 @@ function ResumeLabDetail({ id, navigate }) {
                   </button>
                 )}
               </span>
-            ))}
+              );
+            })}
             {editMode && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <input
@@ -3087,7 +3079,7 @@ function ResumeLabDetail({ id, navigate }) {
           </button>
           {tailoredParsed && (
             <div style={{ borderRadius: 12, padding: 16, background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.1)' }}>
-              <p style={{ fontSize: 12, fontWeight: 500, color: '#0f0f0d', marginTop: 0, marginBottom: 12 }}>Preview active — highlighted text = AI changes</p>
+              <p style={{ fontSize: 12, fontWeight: 500, color: '#0f0f0d', marginTop: 0, marginBottom: 12 }}>Preview active — <span style={{ background: 'rgba(251,191,36,0.22)', color: '#92400e', padding: '1px 6px', borderRadius: 4, fontSize: 11 }}>highlighted text</span> = AI changes</p>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   type="button"
@@ -3652,7 +3644,7 @@ function ResumeLabDetail({ id, navigate }) {
               <div style={{ marginBottom: 20, padding: '12px 20px', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.1)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Sparkles size={14} style={{ color: '#4a4540' }} />
-                  <span style={{ fontSize: 14, color: '#0f0f0d' }}>Tailored preview — highlighted text = AI changes</span>
+                  <span style={{ fontSize: 14, color: '#0f0f0d' }}>Tailored preview — <span style={{ background: 'rgba(251,191,36,0.22)', color: '#92400e', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>highlighted text</span> = AI changes</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <button type="button" onClick={() => setShowSaveModal(true)} style={{ fontSize: 14, padding: '6px 16px', borderRadius: 12, border: 'none', cursor: 'pointer', background: '#1a1a18', color: '#f5f0e8' }}>
@@ -3675,98 +3667,34 @@ function ResumeLabDetail({ id, navigate }) {
               </div>
             )}
 
-            {editMode && getRenderableContactEntries(editedParsed?.contact).length > 0 && (
-              <div style={{ borderRadius: 12, padding: '16px 24px', marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: '8px 24px', background: '#eae5da', border: '1px solid #d4caba' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#9a9288', width: '100%' }}>Contact (saved with Save Changes)</span>
-                {getRenderableContactEntries(editedParsed.contact).map(([k, v]) => (
-                  <span key={k} style={{ fontSize: 14, color: '#4a4540' }}>
-                    <span style={{ color: '#9a9288' }}>{k}: </span>
-                    {v}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {!editMode && (
-              <div style={{ marginBottom: 20, borderRadius: 12, border: '1px solid #d4caba', background: '#f8f4ec', padding: '20px 24px' }}>
-                <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#9a9288', margin: '0 0 8px' }}>Contact & links</h3>
-                <p style={{ fontSize: 13, color: '#7a7268', margin: '0 0 16px', lineHeight: 1.45 }}>
-                  Only fields you fill in appear on PDF and DOCX. Values like &quot;UNKNOWN&quot; or empty lines are skipped.
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 }}>
+            {editMode ? (
+              <div style={{ borderRadius: 12, padding: '14px 24px', marginBottom: 16, background: '#eae5da', border: '1px solid #d4caba' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#9a9288', display: 'block', marginBottom: 10 }}>Contact & links</span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 8 }}>
                   {CONTACT_FORM_KEYS.map(({ key, label }) => (
-                    <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: '#4a4540' }} htmlFor={`rl-contact-${key}`}>{label}</label>
+                    <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: '#4a4540' }} htmlFor={`rl-cedit-${key}`}>{label}</label>
                       <input
-                        id={`rl-contact-${key}`}
+                        id={`rl-cedit-${key}`}
                         value={contactForm[key] || ''}
                         onChange={(e) => setContactForm((prev) => ({ ...prev, [key]: e.target.value }))}
-                        placeholder={
-                          key === 'linkedin'
-                            ? 'https://linkedin.com/in/…'
-                            : key === 'github'
-                              ? 'https://github.com/…'
-                              : `Your ${label.toLowerCase()}`
-                        }
-                        style={{
-                          background: '#f8f4ec',
-                          border: '1px solid #d4caba',
-                          color: '#0f0f0d',
-                          borderRadius: 10,
-                          padding: '12px 14px',
-                          fontSize: 14,
-                          outline: 'none',
-                          width: '100%',
-                          boxSizing: 'border-box',
-                        }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = 'rgba(0,0,0,0.35)';
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = '#d4caba';
-                        }}
+                        placeholder={key === 'linkedin' ? 'linkedin.com/in/…' : key === 'github' ? 'github.com/…' : label}
+                        style={{ background: '#fff', border: '1px solid #d4caba', color: '#0f0f0d', borderRadius: 8, padding: '7px 10px', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.35)'; }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = '#d4caba'; }}
                       />
                     </div>
                   ))}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={saveContactFields}
-                    disabled={savingContact}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '10px 18px',
-                      borderRadius: 10,
-                      fontSize: 14,
-                      fontWeight: 600,
-                      border: 'none',
-                      background: '#1a1a18',
-                      color: '#f5f0e8',
-                      cursor: savingContact ? 'wait' : 'pointer',
-                      opacity: savingContact ? 0.7 : 1,
-                    }}
-                  >
-                    {savingContact ? <Loader2 size={15} style={spinStyle} /> : null}
-                    Save contact
-                  </button>
-                  {contactSaveMsg ? (
-                    <span style={{ fontSize: 13, color: contactSaveMsg.toLowerCase().includes('fail') ? '#b91c1c' : '#047857' }}>{contactSaveMsg}</span>
-                  ) : null}
-                </div>
-                {getRenderableContactEntries(resume.parsed?.contact).length > 0 && (
-                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #d4caba', display: 'flex', flexWrap: 'wrap', gap: '8px 20px' }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: '#9a9288', width: '100%' }}>On resume</span>
-                    {getRenderableContactEntries(resume.parsed.contact).map(([k, v]) => (
-                      <span key={k} style={{ fontSize: 13, color: '#4a4540' }}>
-                        <span style={{ color: '#9a9288' }}>{k}: </span>
-                        {v}
-                      </span>
-                    ))}
-                  </div>
-                )}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '2px 12px', marginBottom: 12, fontSize: 13, color: '#7a7268' }}>
+                {getRenderableContactEntries(resume?.parsed?.contact).length > 0
+                  ? getRenderableContactEntries(resume.parsed.contact).map(([k, v], i, arr) => (
+                    <span key={k}>{v}{i < arr.length - 1 ? <span style={{ margin: '0 2px', color: '#c8bfb0' }}> | </span> : null}</span>
+                  ))
+                  : <span style={{ color: '#b0a898', fontStyle: 'italic' }}>No contact info — click Edit to add</span>
+                }
               </div>
             )}
 

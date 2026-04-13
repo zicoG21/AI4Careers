@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
-  FileText, Briefcase, MessageSquare, LogOut, Sparkles,
+  FileText, Briefcase, MessageSquare, LogOut,
   Building2, Bot, User, Home,
 } from 'lucide-react';
 
@@ -114,9 +114,7 @@ export default function Layout({ children }) {
           {/* Brand */}
           <div style={{ padding: '24px 20px', borderBottom: '1px solid #d4caba' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: '#1a1a18' }}>
-                <Sparkles size={14} style={{ color: '#f5f0e8' }} />
-              </div>
+              <img src="/logo.png" alt="AI4Careers" style={{ width: 32, height: 32, borderRadius: 10, flexShrink: 0 }} />
               <div style={{ overflow: 'hidden' }}>
                 <p style={{ fontSize: 14, fontWeight: 600, color: '#0f0f0d', lineHeight: 1.2, margin: 0, whiteSpace: 'nowrap' }}>AI4Careers</p>
                 <p style={{ fontSize: 10, color: '#9a9288', lineHeight: 1.2, marginTop: 2, whiteSpace: 'nowrap' }}>Career Toolkit</p>
