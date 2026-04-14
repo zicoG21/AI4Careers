@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/walker/:path*",
+      "destination": "http://k8s-ai4caree-jaseciin-9145d4c8f6-b3e85e9a152176e0.elb.us-east-2.amazonaws.com/walker/:path*"
+    }
+  ]
+}
