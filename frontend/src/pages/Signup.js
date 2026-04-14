@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Loader2 } from 'lucide-react';
+
+const SIGNUP_DRAFT_KEY = 'signup-draft';
 
 const INPUT = {
   background: '#f8f4ec', border: '1px solid #d4caba', color: '#0f0f0d',
@@ -13,20 +15,91 @@ const onFocus = (e) => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.35)';
 const onBlur = (e) => { e.currentTarget.style.borderColor = '#d4caba'; };
 
 function Signup() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const location = useLocation();
+  const routeDraft = location.state?.signupDraft || null;
+  const [name, setName] = useState(() => (routeDraft && typeof routeDraft.name === 'string' ? routeDraft.name : ''));
+  const [email, setEmail] = useState(() => (routeDraft && typeof routeDraft.email === 'string' ? routeDraft.email : ''));
+  const [password, setPassword] = useState(() => (routeDraft && typeof routeDraft.password === 'string' ? routeDraft.password : ''));
+  const [consentedEula, setConsentedEula] = useState(() => Boolean(routeDraft?.consentedEula));
+  const [activeField, setActiveField] = useState(() => (routeDraft && typeof routeDraft.activeField === 'string' ? routeDraft.activeField : ''));
   const [error, setError] = useState('');
+  const [consentError, setConsentError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signup } = useAuth();
   const navigate = useNavigate();
+  const nameRef = useRef(null);
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
+
+  useEffect(() => {
+    if (routeDraft && typeof routeDraft === 'object') {
+      return;
+    }
+
+    try {
+      const saved = window.sessionStorage.getItem(SIGNUP_DRAFT_KEY);
+      if (!saved) return;
+
+      const draft = JSON.parse(saved);
+      if (draft && typeof draft === 'object') {
+        setName(typeof draft.name === 'string' ? draft.name : '');
+        setEmail(typeof draft.email === 'string' ? draft.email : '');
+        setPassword(typeof draft.password === 'string' ? draft.password : '');
+        setConsentedEula(Boolean(draft.consentedEula));
+        setActiveField(typeof draft.activeField === 'string' ? draft.activeField : '');
+      }
+    } catch {
+      // Ignore malformed draft state.
+    }
+  }, [routeDraft]);
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(
+        SIGNUP_DRAFT_KEY,
+        JSON.stringify({ name, email, password, consentedEula, activeField })
+      );
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [name, email, password, consentedEula, activeField]);
+
+  useEffect(() => {
+    if (activeField === 'name' && nameRef.current) {
+      nameRef.current.focus();
+    } else if (activeField === 'email' && emailRef.current) {
+      emailRef.current.focus();
+    } else if (activeField === 'password' && passwordRef.current) {
+      passwordRef.current.focus();
+    }
+  }, [activeField]);
+
+  const currentDraft = {
+    name,
+    email,
+    password,
+    consentedEula,
+    activeField,
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setConsentError('');
+
+    if (!consentedEula) {
+      setConsentError('Please consent to the End User License Agreement first!');
+      return;
+    }
+
     setLoading(true);
     const result = await signup(email, password, name);
     if (result.success) {
+      try {
+        window.sessionStorage.removeItem(SIGNUP_DRAFT_KEY);
+      } catch {
+        // Ignore storage failures.
+      }
       navigate('/dashboard');
     } else {
       setError(result.error || 'Signup failed');
@@ -52,19 +125,43 @@ function Signup() {
           <form onSubmit={handleSubmit} style={{ padding: '24px 28px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#9a9288' }}>Full Name</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" required
-                style={INPUT} onFocus={onFocus} onBlur={onBlur} />
+              <input ref={nameRef} type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" required
+                style={INPUT} onFocus={(e) => { setActiveField('name'); onFocus(e); }} onBlur={onBlur} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#9a9288' }}>Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required
-                style={INPUT} onFocus={onFocus} onBlur={onBlur} />
+              <input ref={emailRef} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required
+                style={INPUT} onFocus={(e) => { setActiveField('email'); onFocus(e); }} onBlur={onBlur} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#9a9288' }}>Password</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required
-                style={INPUT} onFocus={onFocus} onBlur={onBlur} />
+              <input ref={passwordRef} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required
+                style={INPUT} onFocus={(e) => { setActiveField('password'); onFocus(e); }} onBlur={onBlur} />
             </div>
+
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: -2, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={consentedEula}
+                onChange={(e) => {
+                  setConsentedEula(e.target.checked);
+                  if (e.target.checked) {
+                    setConsentError('');
+                  }
+                }}
+                style={{ marginTop: 3, width: 16, height: 16, accentColor: '#1a1a18', flexShrink: 0 }}
+              />
+              <span style={{ fontSize: 13, lineHeight: 1.5, color: '#5c574f' }}>
+                I have read and agreed to the{' '}
+                <Link
+                  to="/eula"
+                  state={{ signupDraft: currentDraft }}
+                  style={{ color: '#0f0f0d', fontWeight: 600, textDecoration: 'underline' }}
+                >
+                  End User License Agreement (EULA)
+                </Link>.
+              </span>
+            </label>
 
             {error && (
               <p style={{ fontSize: 13, color: '#b91c1c', background: 'rgba(185,28,28,0.08)', border: '1px solid rgba(185,28,28,0.2)', borderRadius: 8, padding: '12px 16px', margin: 0 }}>
@@ -84,6 +181,12 @@ function Signup() {
               {loading && <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />}
               {loading ? 'Creating account…' : 'Create Account'}
             </button>
+
+            {consentError && (
+              <p style={{ fontSize: 13, color: '#b91c1c', margin: '-8px 0 0' }}>
+                {consentError}
+              </p>
+            )}
 
             <p style={{ textAlign: 'center', fontSize: 14, color: '#7a7268', margin: 0 }}>
               Already have an account?{' '}

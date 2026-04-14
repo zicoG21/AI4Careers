@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import EulaPage from './pages/EulaPage';
 import Dashboard from './pages/Dashboard';
 import ChatWithAI from './pages/ChatWithAI';
 import Profile from './pages/Profile';
@@ -21,6 +22,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/eula" element={<EulaPage />} />
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/resume-upload" element={<Navigate to="/resume-lab" replace />} />
           <Route path="/resume-lab" element={<PrivateRoute><ResumeLab /></PrivateRoute>} />
