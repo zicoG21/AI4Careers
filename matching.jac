@@ -494,7 +494,7 @@ def dict_cast(value: dict) -> dict {
 }
 
 """Normalize DB / JSON values that should be lists (avoids str treated like dict keys)."""
-def as_list(val: None | str | list) -> list {
+def as_list(val: any) -> list {
     if val is None {
         return [];
     }
