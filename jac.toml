@@ -5,19 +5,35 @@ description = "AI-powered career fair assistant"
 entry-point = "main.jac"
 
 [dependencies]
+pypdf = "~=6.10"
+python-docx = "~=1.2"
+
+[dependencies.npm]
+react = "^18.2.0"
+react-dom = "^18.2.0"
+react-router-dom = "^6.22.0"
+react-error-boundary = "^5.0.0"
+react-hook-form = "^7.71.0"
+zod = "^4.3.6"
+"@hookform/resolvers" = "^5.2.2"
+
+[dependencies.npm.dev]
+vite = "^6.4.1"
+"@vitejs/plugin-react" = "^4.2.1"
+typescript = "^5.3.3"
+"@types/react" = "^18.2.0"
+"@types/react-dom" = "^18.2.0"
 
 [serve]
 
 [plugins.scale.secrets]
-OPENAI_API_KEY="${OPENAI_API_KEY}"
+OPENAI_API_KEY = "${OPENAI_API_KEY}"
 
 [plugins.client]
 
-# --- Choose your model ---
-# OpenAI (set OPENAI_API_KEY in your environment):
-#   default_model = "gpt-4o-mini"
-# Anthropic (set ANTHROPIC_API_KEY in your environment):
-#   default_model = "claude-haiku-4-5-20251001"
+[plugins.byllm]
+system_prompt = "You are a helpful AI career fair assistant. Be concise, practical, and grounded in the available resume and company data."
+
 [plugins.byllm.model]
 default_model = "gpt-4o-mini"
 
@@ -27,6 +43,3 @@ anthropic_model = "claude-3-5-haiku-20241022"
 
 [plugins.byllm.call_params]
 temperature = 0.2
-
-[plugins.byllm]
-system_prompt = "You are a helpful AI career fair assistant. Be concise, practical, and grounded in the available resume and company data."

@@ -338,6 +338,46 @@ def delete_story(story_id: str, user_id: str) -> bool {
     return _f(story_id, user_id);
 }
 
+def clear_event_import(event_id: str) {
+    if _USE_MONGO {
+        import from db_mongo { clear_event_import as _f };
+        _f(event_id);
+    } else {
+        import from db_sqlite { clear_event_import as _f };
+        _f(event_id);
+    }
+}
+
+def insert_event(event_doc: dict) {
+    if _USE_MONGO {
+        import from db_mongo { insert_event as _f };
+        _f(event_doc);
+    } else {
+        import from db_sqlite { insert_event as _f };
+        _f(event_doc);
+    }
+}
+
+def upsert_company(company_doc: dict) {
+    if _USE_MONGO {
+        import from db_mongo { upsert_company as _f };
+        _f(company_doc);
+    } else {
+        import from db_sqlite { upsert_company as _f };
+        _f(company_doc);
+    }
+}
+
+def insert_role(role_doc: dict) {
+    if _USE_MONGO {
+        import from db_mongo { insert_role as _f };
+        _f(role_doc);
+    } else {
+        import from db_sqlite { insert_role as _f };
+        _f(role_doc);
+    }
+}
+
 def _do_init() -> bool {
     init_db();
     return True;

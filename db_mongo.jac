@@ -90,27 +90,94 @@ def get_resume(resume_id: str, user_id: str) -> dict | None {
     };
 }
 
+def _rv_extract(rv: dict) -> dict {
+    parsed = rv.get('parsed_data', {}) or {};
+    if not isinstance(parsed, dict) { parsed = {}; }
+    skills: list = [];
+    sk_raw = parsed.get('skills');
+    if isinstance(sk_raw, list) {
+        for cat in sk_raw {
+            if isinstance(cat, dict) and 'items' in cat {
+                skills = skills + list(cat['items']);
+            } elif isinstance(cat, str) and cat.strip() != '' {
+                skills.append(cat.strip());
+            }
+        }
+    } elif isinstance(sk_raw, str) and sk_raw.strip() != '' {
+        skills.append(sk_raw.strip());
+    }
+    bullets: list = [];
+    exp = parsed.get('experience');
+    if isinstance(exp, list) {
+        for e in exp {
+            if not isinstance(e, dict) { continue; }
+            bs = e.get('bullets');
+            if isinstance(bs, list) {
+                for b in bs {
+                    if isinstance(b, dict) and 'text' in b { bullets.append(b['text']); }
+                    else { bullets.append(str(b)); }
+                }
+            }
+        }
+    }
+    projects: list = [];
+    projs = parsed.get('projects');
+    if isinstance(projs, list) {
+        for p in projs {
+            if not isinstance(p, dict) { continue; }
+            bs = p.get('bullets');
+            if isinstance(bs, list) {
+                for b in bs {
+                    if isinstance(b, dict) and 'text' in b { projects.append(b['text']); }
+                    else { projects.append(str(b)); }
+                }
+            }
+        }
+    }
+    education: list = [];
+    edu = parsed.get('education');
+    if isinstance(edu, list) {
+        for e in edu {
+            if isinstance(e, dict) {
+                education.append((e.get('institution', '') or '') + ' ' + (e.get('degree', '') or ''));
+            }
+        }
+    }
+    return {'skills': skills, 'experience_bullets': bullets,
+            'projects': projects, 'education': education};
+}
+
 def get_latest_resume(user_id: str) -> dict | None {
     rv_rows: list[dict] = list(_db().find('resume_versions', {'user_id': user_id}));
     rv_rows.sort(key=lambda r: r['updated_at'], reverse=True);
-    if rv_rows {
-        rv: dict = rv_rows[0];
+    legacy_rows: list[dict] = list(_db().find('resumes', {'user_id': user_id}));
+    legacy_rows.sort(key=lambda r: r['uploaded_at'], reverse=True);
+    rv = rv_rows[0] if rv_rows else None;
+    leg = legacy_rows[0] if legacy_rows else None;
+    if rv is None and leg is None { return None; }
+    use_rv = False;
+    if rv is not None and leg is None { use_rv = True; }
+    elif rv is not None and leg is not None {
+        if rv['updated_at'] > leg['uploaded_at'] { use_rv = True; }
+    }
+    if use_rv {
+        ext = _rv_extract(rv);
         return {
             'resume_id': rv['rv_id'], 'filename': rv['file_name'],
             'uploaded_at': rv['updated_at'],
             'raw_text': rv.get('raw_text', ''), 'pdf_data': '',
-            'skills': [], 'experience_bullets': [], 'projects': [], 'education': {}
+            'skills': ext['skills'], 'experience_bullets': ext['experience_bullets'],
+            'projects': ext['projects'], 'education': ext['education']
         };
     }
-    legacy_rows: list[dict] = list(_db().find('resumes', {'user_id': user_id}));
-    legacy_rows.sort(key=lambda r: r['uploaded_at'], reverse=True);
-    if not legacy_rows { return None; }
-    leg: dict = legacy_rows[0];
     return {
         'resume_id': leg['resume_id'], 'filename': leg['filename'],
         'uploaded_at': leg['uploaded_at'],
         'raw_text': leg.get('raw_text', ''), 'pdf_data': leg.get('pdf_data', ''),
-        'skills': [], 'experience_bullets': [], 'projects': [], 'education': {}
+        'skills': leg.get('skills', []),
+        'experience_bullets': leg.get('experience_bullets', []),
+        'projects': leg.get('projects', []),
+        'education': leg.get('education', {})
     };
 }
 
@@ -126,6 +193,8 @@ def list_resumes(user_id: str) -> list {
 }
 
 def delete_resume(resume_id: str, user_id: str) -> bool {
+    existing: dict | None = _db().find_one('resumes', {'resume_id': resume_id, 'user_id': user_id});
+    if existing is None { return False; }
     _db().delete_one('resumes', {'resume_id': resume_id, 'user_id': user_id});
     return True;
 }
@@ -296,6 +365,8 @@ def update_resume_version_meta(rv_id: str, user_id: str, version_name: str, labe
 }
 
 def delete_resume_version(rv_id: str, user_id: str) -> bool {
+    existing: dict | None = _db().find_one('resume_versions', {'rv_id': rv_id, 'user_id': user_id});
+    if existing is None { return False; }
     _db().delete_one('resume_versions', {'rv_id': rv_id, 'user_id': user_id});
     return True;
 }
@@ -342,6 +413,8 @@ def update_experience(exp_id: str, user_id: str, company: str, role: str,
 }
 
 def delete_experience(exp_id: str, user_id: str) -> bool {
+    existing: dict | None = _db().find_one('experiences', {'exp_id': exp_id, 'user_id': user_id});
+    if existing is None { return False; }
     _db().delete_many('stories', {'exp_id': exp_id, 'user_id': user_id});
     _db().delete_one('experiences', {'exp_id': exp_id, 'user_id': user_id});
     return True;
@@ -407,6 +480,31 @@ def update_story(story_id: str, user_id: str, title: str, user_notes: str) -> bo
 }
 
 def delete_story(story_id: str, user_id: str) -> bool {
+    existing: dict | None = _db().find_one('stories', {'story_id': story_id, 'user_id': user_id});
+    if existing is None { return False; }
     _db().delete_one('stories', {'story_id': story_id, 'user_id': user_id});
     return True;
+}
+
+def clear_event_import(event_id: str) {
+    _db().delete_many('roles', {'event_id': event_id});
+    _db().delete_many('companies', {'event_id': event_id});
+    _db().delete_one('events', {'event_id': event_id});
+}
+
+def insert_event(event_doc: dict) {
+    _db().insert_one('events', event_doc);
+}
+
+def upsert_company(company_doc: dict) {
+    existing: dict | None = _db().find_one('companies', {'company_id': company_doc['company_id']});
+    if existing is None {
+        _db().insert_one('companies', company_doc);
+    } else {
+        _db().update_one('companies', {'company_id': company_doc['company_id']}, {'$set': company_doc});
+    }
+}
+
+def insert_role(role_doc: dict) {
+    _db().insert_one('roles', role_doc);
 }

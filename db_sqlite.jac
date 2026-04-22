@@ -1278,5 +1278,80 @@ def delete_story(story_id: str, user_id: str) -> bool {
     return result.rowcount > 0;
 }
 
+"""Delete all roles, companies, and the event record for a given event_id."""
+def clear_event_import(event_id: str) {
+    conn = _conn();
+    conn.execute("DELETE FROM roles WHERE event_id = ?", (event_id,));
+    conn.execute("DELETE FROM companies WHERE event_id = ?", (event_id,));
+    conn.execute("DELETE FROM events WHERE event_id = ?", (event_id,));
+    conn.commit();
+    conn.close();
+}
+
+"""Insert a new event record."""
+def insert_event(event_doc: dict) {
+    conn = _conn();
+    conn.execute(
+        "INSERT INTO events (event_id, name, term, start_date, end_date) VALUES (?, ?, ?, ?, ?)",
+        (event_doc['event_id'], event_doc['name'], event_doc['term'],
+         event_doc['start_date'], event_doc['end_date'])
+    );
+    conn.commit();
+    conn.close();
+}
+
+"""Insert or replace a company record (upsert by company_id)."""
+def upsert_company(company_doc: dict) {
+    import json;
+    conn = _conn();
+    conn.execute(
+        """INSERT OR REPLACE INTO companies
+           (company_id, event_id, name, icon_url, fair_day, is_multi_day, website,
+            careers_url, description, positions, degree_levels, academic_years, majors,
+            sponsorship, sponsorship_notes, sponsorship_flag, sponsorship_status,
+            regions, accepts_hardcopy)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            company_doc['company_id'], company_doc['event_id'], company_doc['name'],
+            company_doc.get('icon_url', ''), company_doc.get('fair_day', ''),
+            company_doc.get('is_multi_day', 0), company_doc.get('website', ''),
+            company_doc.get('careers_url', ''), company_doc.get('description', ''),
+            json.dumps(company_doc.get('positions', [])),
+            json.dumps(company_doc.get('degree_levels', [])),
+            json.dumps(company_doc.get('academic_years', [])),
+            json.dumps(company_doc.get('majors', [])),
+            json.dumps(company_doc.get('sponsorship', [])),
+            company_doc.get('sponsorship_notes', ''),
+            company_doc.get('sponsorship_flag', 'No'),
+            company_doc.get('sponsorship_status', 'No'),
+            json.dumps(company_doc.get('regions', [])),
+            company_doc.get('accepts_hardcopy', 0)
+        )
+    );
+    conn.commit();
+    conn.close();
+}
+
+"""Insert a new role record."""
+def insert_role(role_doc: dict) {
+    import json;
+    conn = _conn();
+    conn.execute(
+        """INSERT INTO roles
+           (role_id, event_id, company_id, title, category, location, work_mode,
+            sponsorship, description, tags, role_source_url, role_last_checked)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            role_doc['role_id'], role_doc['event_id'], role_doc.get('company_id', ''),
+            role_doc['title'], role_doc.get('category', ''), role_doc.get('location', ''),
+            role_doc.get('work_mode', ''), role_doc.get('sponsorship', 'Unknown'),
+            role_doc.get('description', ''), json.dumps(role_doc.get('tags', [])),
+            role_doc.get('role_source_url', ''), role_doc.get('role_last_checked', '')
+        )
+    );
+    conn.commit();
+    conn.close();
+}
+
 # Auto-initialize database on module load
 glob _db_initialized: bool = (lambda : (init_db(), True)[1])();

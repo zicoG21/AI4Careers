@@ -3,7 +3,7 @@ import json;
 import os;
 import from uuid { uuid4 }
 
-import from jac_scale.lib { kvstore, Db }
+import from db { init_db, clear_event_import, insert_event, upsert_company, insert_role }
 
 glob CAREER_FAIR_CSV: str = os.path.join(
          "data", "umich_fall_2025_company.csv"
@@ -14,10 +14,6 @@ glob EVENT_NAME: str = "University of Michigan Fall 2025 Career Fair";
 glob EVENT_TERM: str = "Fall 2025";
 glob EVENT_START: str = "2025-09-22";
 glob EVENT_END: str = "2025-09-23";
-
-def _db() -> Db {
-    return kvstore(db_name='ai4careers', db_type='mongodb');
-}
 
 def _safe_str(value: object) -> str {
     if value is None {
@@ -155,13 +151,10 @@ def _make_role_titles(row: dict) -> list {
 }
 
 def import_career_fair(csv_path: str) -> dict {
-    db = _db();
+    init_db();
+    clear_event_import(EVENT_ID);
 
-    db.delete_many('roles', {'event_id': EVENT_ID});
-    db.delete_many('companies', {'event_id': EVENT_ID});
-    db.delete_one('events', {'event_id': EVENT_ID});
-
-    db.insert_one('events', {
+    insert_event({
         'event_id': EVENT_ID,
         'name': EVENT_NAME,
         'term': EVENT_TERM,
@@ -190,7 +183,7 @@ def import_career_fair(csv_path: str) -> dict {
                 sponsorship_status = "No";
             }
 
-            company_doc = {
+            upsert_company({
                 'company_id': company_id,
                 'event_id': EVENT_ID,
                 'name': _safe_str(row["employer_name"]),
@@ -210,21 +203,14 @@ def import_career_fair(csv_path: str) -> dict {
                 'sponsorship_status': sponsorship_status,
                 'regions': _split_csv_like(row["regions_recruited"]),
                 'accepts_hardcopy': 1 if _to_bool(row["accept_hardcopy_resumes"]) else 0
-            };
-
-            existing: dict | None = db.find_one('companies', {'company_id': company_id});
-            if existing is None {
-                db.insert_one('companies', company_doc);
-            } else {
-                db.update_one('companies', {'company_id': company_id}, {'$set': company_doc});
-            }
+            });
             company_count += 1;
 
             role_defs = _make_role_titles(row);
             for role in role_defs {
                 role_id = "role_" + str(uuid4())[:8];
 
-                db.insert_one('roles', {
+                insert_role({
                     'role_id': role_id,
                     'event_id': EVENT_ID,
                     'company_id': company_id,
